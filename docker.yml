@@ -1,0 +1,65 @@
+---
+- name: " Docker clone and image push"
+  become: true
+  hosts: amazon 
+  vars:
+    packages:
+      - git
+      - docker
+      - python3-pip
+    repo_url: "https://github.com/athithyanac/FlaskApp-Image.git"
+    user: "ec2-user"
+    image_name: "athithyanac/pyapp"
+  tasks:
+    - name: "Install and git and docker"
+      dnf: 
+        name: "{{packages}}"
+        state: present
+    - name: "Install docker client for python docker-py"
+      pip:
+        name: docker-py
+        state: present
+    - name: "Start and enable docker Service"
+      service:
+        name: docker
+        state: started
+        enabled: true
+    - name: "Adding user to docker group"
+      user:
+        name: "{{user}}"
+        append: true
+        groups: docker
+    - name: "Cloning Repo"
+      git:
+        repo: "{{repo_url}}"
+        dest: /home/ec2-user/docker/
+      register: git_status
+    - name: "Dockerhub login"
+      docker_login:
+        username: "{{username}}"
+        password: "{{pwd}}"
+        state: present
+    - name: "Building and Pushing Docker Image to Dockerhub"
+      when: git_status.changed
+      docker_image:
+        build:
+          path: /home/ec2-user/docker/
+        source: build
+        state: present
+        push: true
+        name: "{{image_name}}"
+        tag: "{{item}}"
+      with_items:
+        - latest
+        - "{{git_status.after}}"
+    - name: "Dockerhub logout"
+      docker_login:
+        state: absent
+    - name: "Image Cleanup"
+      docker_image:
+        state: absent
+        name: "{{image_name}}"
+        tag: "{{item}}"
+      with_items:
+        - latest
+        - "{{git_status.after}}"
