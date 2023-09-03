@@ -10,6 +10,8 @@
     repo_url: "https://github.com/athithyanac/FlaskApp-Image.git"
     user: "ec2-user"
     image_name: "athithyanac/pyapp"
+  vars_files:
+    - dockerhub_creds.yml
   tasks:
     - name: "Install and git and docker"
       dnf: 
